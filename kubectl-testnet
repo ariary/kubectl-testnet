@@ -1,0 +1,227 @@
+#!/bin/bash
+
+if [ $# -eq 0 ]; then
+    echo "Usage: testnet [hostname]:[port] [flags]"
+    echo "To launch testnet server (on-demand tests): testnet server [flags]"
+    echo "To make a client request to testnet server: testnet client [hostname]:[port] [flags]"
+    exit 1
+fi
+
+
+
+################################################
+################################################
+## FUNCTIONS
+################################################
+################################################
+
+################################################
+# pod_name_to_ip :
+# give ip associated to a pod name ($1)
+################################################
+pod_name_to_ip() {
+    local pod_name=$1
+    local ip_address=$(kubectl get pod --all-namespaces -o jsonpath="{.items[?(@.metadata.name=='$pod_name')].status.podIP}")
+    echo $ip_address
+}
+
+################################################
+# launch_job :
+# (default) used to launch testnet job that will test connectivity, and then look at the log)
+# $1: endpoint, $2: pod option, $3: label (if empty->default)
+################################################
+launch_job(){
+    # default
+    local endpoint="${1}"
+    local label=${3}
+    # pod opt?
+    if [ "$2" = true ]; then
+        local pod_name=$(echo $1|cut -d ':' -f1)
+        local port=$(echo $1|cut -d ':' -f2)
+        local ip=$(pod_name_to_ip $pod_name)
+        endpoint="${ip}:${port}"
+    fi
+    # label opt?
+    if [ -z "${label}" ]; then
+        label="app: testnet"
+    else
+        #add space + use ':'
+        key=$(echo $label|cut -d '=' -f1)
+        value=$(echo $label|cut -d '=' -f2)
+        label="${key}: ${value}"
+    fi
+
+    kubectl apply -f - <<EOF
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: testnet
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    metadata:
+      labels:
+        ${label}
+    spec:
+      containers:
+      - name: testnet
+        image: ariary/testnet
+        command: ["/app/testnet","-u","${endpoint}"]
+      restartPolicy: Never
+  backoffLimit: 0
+EOF
+    kubectl wait --for=condition=complete --for=condition=failed job/testnet
+    kubectl logs job/testnet
+}
+
+################################################
+# launch_server :
+# start testnet pod "on-demand"
+# $1: label (if empty->default)
+################################################
+launch_server(){
+    # default
+    local label="${1}"
+    # label opt?
+    if [ -z "${label}" ]; then
+        label="app: testnet"
+    else
+        #add space + use ':'
+        key=$(echo $label|cut -d '=' -f1)
+        value=$(echo $label|cut -d '=' -f2)
+        label="${key}: ${value}"
+    fi
+
+    kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: testnet
+  labels:
+    $label
+spec:
+  containers:
+  - name: testnet
+    image: ariary/testnet
+    command: ["/app/testnet"]
+    args: ["-s"]
+    ports:
+      - name: web
+        containerPort: 9292
+        protocol: TCP
+  restartPolicy: OnFailure
+EOF
+}
+
+################################################
+# client :
+# make a request (exec)  to testnet pod "on-demand"
+# $1: endpoint, $2: pod option, $4: log option, $3: label (if empty->default)
+################################################
+client(){
+    # default
+    local endpoint="${1}"
+
+    local label=${4}
+    # pod opt?
+    if [ "$2" = true ]; then
+        local pod_name=$(echo $1|cut -d ':' -f1)
+        local port=$(echo $1|cut -d ':' -f2)
+        local ip=$(pod_name_to_ip $pod_name)
+        endpoint="${ip}:${port}"
+    fi
+    # label opt?
+    if [ -z "${label}" ]; then
+        label="app=testnet"
+    fi
+
+    # Treat endpoint host:port -> host/port
+    endpoint=$(echo $endpoint|tr ":" "/")
+
+    # log opt?
+    if [ "$3" = true ]; then
+        kubectl logs -l "${label}" -f
+    else
+        testnet_pod=$(kubectl get pods -l "${label}" -o jsonpath="{.items[0].metadata.name}")
+        kubectl exec $testnet_pod -- curl 127.1:9292/${endpoint}
+    fi
+}
+
+
+
+################################################
+################################################
+## SUBCOMMANDS/FLAG HANDLING
+################################################
+################################################
+
+case "$1" in
+    client|c)
+        log=false
+        pod=false
+        label=""
+        # shift
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --label|-l)
+                    shift
+                    label="$1"
+                    ;;
+                --log|-L)
+                    log=true
+                    ;;
+                --pod|-p)
+                    pod=true
+                    ;;
+                *)
+                    args=$1
+                    ;;
+            esac
+            shift
+        done
+        # client logic
+        client $args $pod $log $label
+        ;;
+    server|s)
+        label=""
+        shift
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --label|-l)
+                    shift
+                    label="$1"
+                    ;;
+                *)
+                    echo "Invalid option: $1"
+                    exit 1
+                    ;;
+            esac
+            shift
+        done
+        # server logic
+        launch_server $label
+        ;;
+    *)
+        # job logic (no subcommand)
+        pod=false
+        label=""
+        #shift
+        while [[ $# -gt 0 ]]; do
+            case $1 in
+                --label|-l)
+                    shift
+                    label="$1"
+                    ;;
+                --pod|-p)
+                    pod=true
+                    ;;
+                *)
+                    args=$1
+                    ;;
+            esac
+            shift
+        done
+        launch_job $args $pod $label
+        ;;
+esac
+

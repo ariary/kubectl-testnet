@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: testnet
+  labels:
+    app: testnet
+spec:
+  containers:
+  - name: testnet
+    image: ariary/testnet
+    command: ["/app/testnet"]
+    args: ["-s"]
+    ports:
+      - name: web
+        containerPort: 9292
+        protocol: TCP
+  restartPolicy: OnFailure

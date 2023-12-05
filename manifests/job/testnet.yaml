@@ -1,0 +1,15 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: testnet
+spec:
+  ttlSecondsAfterFinished: 10
+  template:
+    spec:
+      containers:
+      - name: testnet
+        image: ariary/testnet
+        command: ["/app/testnet","-u","google.fr:80"]
+      restartPolicy: Never
+  backoffLimit: 0
+

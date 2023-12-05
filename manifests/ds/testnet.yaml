@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    app:  testnet
+  name: testnet
+spec:
+  selector:
+    matchLabels:
+      app: testnet
+  template:
+    metadata:
+      labels:
+        app: testnet
+    spec:
+      tolerations:
+      - effect: NoSchedule
+        operator: Exists
+      containers:
+      - name: testnet
+        image: ariary/testnet
+        command: ["/app/testnet"]
+        args: ["-s"]
+        ports:
+          - name: web
+            containerPort: 9292
+            protocol: TCP
+        imagePullPolicy: IfNotPresent
+      dnsPolicy: ClusterFirst
