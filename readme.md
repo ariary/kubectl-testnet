@@ -1,7 +1,3 @@
-# 🛜 testnet
-
-Test network connectivity inside kubernetes cluster
-
 ## 💨 Quick test
 
 **Test connectivity and exit**
