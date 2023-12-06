@@ -79,9 +79,13 @@ spec:
       restartPolicy: Never
   backoffLimit: 0
 EOF
-
-    kubectl wait --for=condition=complete job/testnet || kubectl wait --for=condition=failed job/testnet
-    kubectl logs job/testnet
+    # you can use kubectl wait for multiples conditions
+    while true; do
+    status=$(kubectl get job testnet -o jsonpath='{.status.conditions[0].type}')
+    echo "$status" | grep -qi 'Complete' &&  kubectl logs job/testnet && exit 0
+    echo "$status" | grep -qi 'Failed' && kubectl logs job/testnet && exit 1
+    done
+   
 }
 
 ################################################
@@ -244,3 +248,4 @@ case "$1" in
         launch_job $args $pod $label
         ;;
 esac
+
