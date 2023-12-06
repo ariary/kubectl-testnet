@@ -1,6 +1,5 @@
-# 🛜 testnet
 
-Test network connectivity inside kubernetes cluster
+*You can test connectivity to pod (using IP or name) and external domain*
 
 ## 💨 Quick test
 
