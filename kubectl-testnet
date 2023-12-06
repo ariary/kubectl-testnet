@@ -39,7 +39,10 @@ launch_job(){
         local pod_name=$(echo $1|cut -d ':' -f1)
         local port=$(echo $1|cut -d ':' -f2)
         local ip=$(pod_name_to_ip $pod_name)
-        endpoint="${ip}:${port}"
+        if [ -z "${label}" ]; then
+            echo "pod '$pod_name' was not found in the cluster"
+            exit 1
+        fi
     fi
     # label opt?
     if [ -z "${label}" ]; then
@@ -65,12 +68,19 @@ spec:
     spec:
       containers:
       - name: testnet
-        image: ariary/testnet
+        image: 047207834537.dkr.ecr.eu-west-3.amazonaws.com/security/tests/testnet:3fff4cc0c23e20c22b6874fdfc7e64ce100962bb
         command: ["/app/testnet","-u","${endpoint}"]
+        resources:
+          limits:
+            memory: 96Mi
+          requests:
+            cpu: 20m
+            memory: 64Mi
       restartPolicy: Never
   backoffLimit: 0
 EOF
-    kubectl wait --for=condition=complete --for=condition=failed job/testnet
+
+    kubectl wait --for=condition=complete job/testnet || kubectl wait --for=condition=failed job/testnet
     kubectl logs job/testnet
 }
 
@@ -102,13 +112,19 @@ metadata:
 spec:
   containers:
   - name: testnet
-    image: ariary/testnet
+    image: 047207834537.dkr.ecr.eu-west-3.amazonaws.com/security/tests/testnet:3fff4cc0c23e20c22b6874fdfc7e64ce100962bb
     command: ["/app/testnet"]
     args: ["-s"]
     ports:
       - name: web
         containerPort: 9292
         protocol: TCP
+    resources:
+      limits:
+        memory: 96Mi
+      requests:
+        cpu: 20m
+        memory: 64Mi
   restartPolicy: OnFailure
 EOF
 }
@@ -128,6 +144,10 @@ client(){
         local pod_name=$(echo $1|cut -d ':' -f1)
         local port=$(echo $1|cut -d ':' -f2)
         local ip=$(pod_name_to_ip $pod_name)
+        if [ -z "${label}" ]; then
+            echo "pod '$pod_name' was not found in the cluster"
+            exit 1
+        fi
         endpoint="${ip}:${port}"
     fi
     # label opt?
@@ -224,4 +244,3 @@ case "$1" in
         launch_job $args $pod $label
         ;;
 esac
-
