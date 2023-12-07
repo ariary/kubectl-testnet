@@ -43,6 +43,7 @@ launch_job(){
             echo "pod '$pod_name' was not found in the cluster"
             exit 1
         fi
+        endpoint="${ip}:${port}"
     fi
     # label opt?
     if [ -z "${label}" ]; then
@@ -68,14 +69,8 @@ spec:
     spec:
       containers:
       - name: testnet
-        image: 047207834537.dkr.ecr.eu-west-3.amazonaws.com/security/tests/testnet:3fff4cc0c23e20c22b6874fdfc7e64ce100962bb
+        image: ariary/testnet:latest
         command: ["/app/testnet","-u","${endpoint}"]
-        resources:
-          limits:
-            memory: 96Mi
-          requests:
-            cpu: 20m
-            memory: 64Mi
       restartPolicy: Never
   backoffLimit: 0
 EOF
@@ -116,19 +111,13 @@ metadata:
 spec:
   containers:
   - name: testnet
-    image: 047207834537.dkr.ecr.eu-west-3.amazonaws.com/security/tests/testnet:3fff4cc0c23e20c22b6874fdfc7e64ce100962bb
+    image: ariary/testnet:latest
     command: ["/app/testnet"]
     args: ["-s"]
     ports:
       - name: web
         containerPort: 9292
         protocol: TCP
-    resources:
-      limits:
-        memory: 96Mi
-      requests:
-        cpu: 20m
-        memory: 64Mi
   restartPolicy: OnFailure
 EOF
 }
