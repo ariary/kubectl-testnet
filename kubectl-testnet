@@ -39,7 +39,7 @@ launch_job(){
         local pod_name=$(echo $1|cut -d ':' -f1)
         local port=$(echo $1|cut -d ':' -f2)
         local ip=$(pod_name_to_ip $pod_name)
-        if [ -z "${label}" ]; then
+        if [ -z "${ip}" ]; then
             echo "pod '$pod_name' was not found in the cluster"
             exit 1
         fi
@@ -148,7 +148,7 @@ client(){
         local pod_name=$(echo $1|cut -d ':' -f1)
         local port=$(echo $1|cut -d ':' -f2)
         local ip=$(pod_name_to_ip $pod_name)
-        if [ -z "${label}" ]; then
+        if [ -z "${ip}" ]; then
             echo "pod '$pod_name' was not found in the cluster"
             exit 1
         fi
@@ -248,4 +248,3 @@ case "$1" in
         launch_job $args $pod $label
         ;;
 esac
-
