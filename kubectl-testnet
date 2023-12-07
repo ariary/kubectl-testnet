@@ -70,7 +70,7 @@ spec:
       containers:
       - name: testnet
         image: ariary/testnet:latest
-        command: ["/app/testnet","-u","${endpoint}"]
+        command: ["/app/testnet","-u","${endpoint}","-t","4"]
       restartPolicy: Never
   backoffLimit: 0
 EOF
