@@ -156,7 +156,7 @@ client(){
         kubectl logs -l "${label}" -f
     else
         testnet_pod=$(kubectl get pods -l "${label}" -o jsonpath="{.items[0].metadata.name}")
-        kubectl exec $testnet_pod -- curl 127.1:9292/${endpoint}
+        kubectl exec $testnet_pod -- curl --silent 127.1:9292/${endpoint}
     fi
 }
 
