@@ -61,6 +61,14 @@ func conectivityCheck(endpoint string, timeout int, fromIp string) (success, fai
 	}
 	defer conn.Close()
 
+	//test write to conn
+	if err:= conn.SetWriteDeadline(time.Now().Add(time.Duration(timeout) * time.Second));err!=nil{
+		return "", fmt.Sprintln("Connection failed to", endpoint, "from", fromIp, ":", err)
+	}
+	if _, err := conn.Write([]byte("testnet")); err != nil {
+		return "", fmt.Sprintln("Connection failed to", endpoint, "from", fromIp, ":", err)
+	}
+
 	return fmt.Sprintln("Connection successful to", endpoint, "from", fromIp), ""
 }
 
